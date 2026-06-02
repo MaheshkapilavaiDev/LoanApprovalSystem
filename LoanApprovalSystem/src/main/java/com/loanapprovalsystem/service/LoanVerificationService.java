@@ -29,7 +29,7 @@ public class LoanVerificationService {
 	        != LoanState.SUBMITTED) {
 
 	        throw new RuntimeException(
-	           "Invalid Transition");
+	        		"Loan can only be verified when status is SUBMITTED");
 	    }
 
 	    loan.setState(

@@ -6,5 +6,7 @@ public enum LoanState {
     VERIFIED,
     RISK_ASSESSMENT,
     APPROVED,
-    REJECTED
+    REJECTED,
+    MANUAL_REVIEW
+    
 }
