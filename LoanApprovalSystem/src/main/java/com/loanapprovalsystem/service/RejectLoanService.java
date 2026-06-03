@@ -13,42 +13,42 @@ import jakarta.transaction.Transactional;
 
 @Service
 public class RejectLoanService {
-	
-	
+
 	@Autowired
 	private LoanApplicationRepository loanRepo;
-	
+
 	@Autowired
 	private LoanApprovalRepository approvalRepo;
-	
+
 	@Transactional
-	public void rejectLoan(
-	      Long loanId,
-	      String reason) {
+	public void rejectLoan(Long loanId, String reason) {
 
-	    LoanApplication loan =
-	            loanRepo.findById(loanId)
-	            .orElseThrow();
+		LoanApplication loan = loanRepo.findById(loanId).orElseThrow(() ->
+        new RuntimeException("Loan Not Found"));
+		
+		if (loan.getState() == LoanState.APPROVED) {
+	        throw new RuntimeException(
+	                "Approved loan cannot be rejected");
+	    }
 
-	    loan.setState(
-	         LoanState.REJECTED);
+	    if (loan.getState() == LoanState.REJECTED) {
+	        throw new RuntimeException(
+	                "Loan already rejected");
+	    }
 
-	    loanRepo.save(loan);
+		loan.setState(LoanState.REJECTED);
 
-	    Approval approval =
-	            new Approval();
+		loanRepo.save(loan);
 
-	    approval.setDecision(
-	          "REJECTED");
+		Approval approval = new Approval();
 
-	    approval.setReason(
-	          reason);
+		approval.setDecision("REJECTED");
 
-	    approval.setLoanApplication(
-	          loan);
+		approval.setReason(reason);
 
-	    approvalRepo.save(
-	          approval);
+		approval.setLoanApplication(loan);
+
+		approvalRepo.save(approval);
 	}
 
 }

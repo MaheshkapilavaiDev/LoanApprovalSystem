@@ -3,12 +3,8 @@ package com.loanapprovalsystem.service;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
 
-import com.loanapprovalsystem.dto.ApprovalRequest;
 import com.loanapprovalsystem.dto.LoanRequest;
 import com.loanapprovalsystem.entity.Approval;
 import com.loanapprovalsystem.entity.LoanApplication;
@@ -88,7 +84,24 @@ public class LoanApplicationService {
 	    LoanApplication loan = loanRepo.findById(loanId)
 	            .orElseThrow(() ->
 	                    new RuntimeException("Loan Not Found"));
+	    
+	    if (loan.getState() == LoanState.APPROVED) {
+	        throw new RuntimeException(
+	                "Loan is already approved");
+	    }
 
+	    Approval existingApproval =
+	            approvalRepo.findByLoanApplicationId(loanId);
+
+	    if (existingApproval != null) {
+	        throw new RuntimeException(
+	        		"Decision already exists for this loan");
+	    }
+	    
+	    if (loan.getState() != LoanState.RISK_ASSESSMENT) {
+	   	 
+	   	 throw new RuntimeException( "Loan must be in RISK_ASSESSMENT state"); }
+	    
 	    loan.setState(LoanState.APPROVED);
 
 	    Approval approval = new Approval();

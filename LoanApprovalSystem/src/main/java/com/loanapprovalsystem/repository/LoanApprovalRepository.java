@@ -7,5 +7,7 @@ import com.loanapprovalsystem.entity.Approval;
 
 @Repository
 public interface LoanApprovalRepository extends JpaRepository<Approval, Long> {
+	
+    Approval findByLoanApplicationId(Long loanId);
 
 }

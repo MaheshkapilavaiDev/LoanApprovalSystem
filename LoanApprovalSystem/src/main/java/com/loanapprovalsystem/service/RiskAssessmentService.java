@@ -3,7 +3,6 @@ package com.loanapprovalsystem.service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.loanapprovalsystem.entity.Approval;
 import com.loanapprovalsystem.entity.LoanApplication;
 import com.loanapprovalsystem.enums.LoanState;
 import com.loanapprovalsystem.repository.LoanApplicationRepository;
@@ -14,116 +13,70 @@ import jakarta.transaction.Transactional;
 @Service
 public class RiskAssessmentService {
 
-    @Autowired
-    private LoanApplicationRepository loanRepo;
+	@Autowired
+	private LoanApplicationRepository loanRepo;
 
-    @Autowired
-    private LoanApprovalRepository approvalRepo;
+	@Autowired
+	private LoanApprovalRepository approvalRepo;
 
-    @Autowired
-    private RejectLoanService rejectLoan;
+	@Autowired
+	private RejectLoanService rejectLoan;
 
-    @Autowired
-    private AuditService auditService;
+	@Autowired
+	private AuditService auditService;
 
-    @Transactional
-    public void riskAssessment(Long loanId) {
+	@Autowired
+	private LoanApplicationService loanApplication;
 
-        LoanApplication loan = loanRepo.findById(loanId)
-                .orElseThrow(() ->
-                        new RuntimeException("Loan Not Found"));
+	@Transactional
+	public void riskAssessment(Long loanId) {
 
-        if (loan.getState() != LoanState.VERIFIED) {
+		LoanApplication loan = loanRepo.findById(loanId).orElseThrow(() -> new RuntimeException("Loan Not Found"));
 
-            throw new RuntimeException(
-                    "Loan must be VERIFIED first");
-        }
+		if (loan.getState() != LoanState.VERIFIED) {
 
-        loan.setState(LoanState.RISK_ASSESSMENT);
+			throw new RuntimeException("Loan must be VERIFIED first");
+		}
 
-        loanRepo.save(loan);
+		loan.setState(LoanState.RISK_ASSESSMENT);
 
-        auditService.createAudit(
-                loanId,
-                "VERIFIED",
-                "RISK_ASSESSMENT");
+		loanRepo.save(loan);
 
-        double riskScore = calculateRisk(loan);
+		auditService.createAudit(loanId, "VERIFIED", "RISK_ASSESSMENT");
 
-        if (riskScore > 80) {
+		double riskScore = calculateRisk(loan);
 
-            rejectLoan.rejectLoan(
-                    loanId,
-                    "High Risk Customer");
+		if (riskScore > 80) {
 
-        } else if (riskScore < 40) {
+			rejectLoan.rejectLoan(loanId, "High Risk Customer");
 
-            approveLoan(
-                    loanId,
-                    riskScore);
+		} else if (riskScore < 40) {
 
-        } else {
+			loanApplication.approveLoan(loanId, riskScore);
 
-            loan.setState(LoanState.MANUAL_REVIEW);
+		} else {
 
-            loanRepo.save(loan);
+			loan.setState(LoanState.MANUAL_REVIEW);
 
-            auditService.createAudit(
-                    loanId,
-                    "RISK_ASSESSMENT",
-                    "MANUAL_REVIEW");
-        }
-    }
+			loanRepo.save(loan);
 
-    private double calculateRisk(
-            LoanApplication loan) {
+			auditService.createAudit(loanId, "RISK_ASSESSMENT", "MANUAL_REVIEW");
+		}
+	}
 
-        double ratio =
-                loan.getLoanAmount()
-                / loan.getAnnualIncome();
+	private double calculateRisk(LoanApplication loan) {
 
-        if (ratio > 2) {
-            return 90;
-        }
+		double ratio = loan.getLoanAmount() / loan.getAnnualIncome();
 
-        if (ratio > 1) {
-            return 70;
-        }
+		if (ratio > 2) {
+			return 90;
+		}
 
-        return 30;
-    }
+		if (ratio > 1) {
+			return 70;
+		}
 
-    @Transactional
-    public Approval approveLoan(
-            Long loanId,
-            double riskScore) {
+		return 30;
+	}
 
-        LoanApplication loan = loanRepo.findById(loanId)
-                .orElseThrow(() ->
-                        new RuntimeException("Loan Not Found"));
-
-        if (loan.getState() != LoanState.RISK_ASSESSMENT) {
-
-            throw new RuntimeException(
-                    "Loan must be in RISK_ASSESSMENT state");
-        }
-
-        loan.setState(LoanState.APPROVED);
-
-        Approval approval = new Approval();
-
-        approval.setDecision("APPROVED");
-        approval.setReason("Auto Approved");
-        approval.setRiskScore(riskScore);
-        approval.setLoanApplication(loan);
-
-        loanRepo.save(loan);
-
-        auditService.createAudit(
-                loanId,
-                "RISK_ASSESSMENT",
-                "APPROVED");
-
-        return approvalRepo.save(approval);
-    }
 }
